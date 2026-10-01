@@ -6,13 +6,13 @@ hardware, from a single PC up to touch-screen kiosks in knowledge centers.
 
 ## Status
 
-Phase 0: building the searchable library (inventory, text extraction, OCR).
+Phase 1: searchable library and website (search, browse, read every page).
 
 ## Step 1: inventory the library
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r ingest/requirements.txt
+pip install -r requirements.txt
 python ingest/inventory.py /path/to/your/pdf/folder --out inventory.csv
 ```
 
@@ -53,3 +53,39 @@ python ingest/search.py "yaj*"          # prefix search
 
 Search matches whole words in any script. Sanskrit diacritics are optional
 (`siva` finds `śiva`), and each result shows the book and page number.
+
+## Step 4: the website
+
+One-time setup (needs Node.js only to build the site, not to run it):
+
+```bash
+brew install node
+cd web && npm install && npm run build && cd ..
+```
+
+Run it:
+
+```bash
+python app/server.py
+```
+
+Then open http://localhost:8000. It works while the library is still being
+built; books show how much of them is searchable so far.
+
+- **Home:** search everything and see the largest works.
+- **Library:** every book, filterable by language and title.
+- **Search:** results across all books with the matching passage highlighted.
+- **Reader:** the original PDF page by page (even 7,000-page books open
+  instantly), the page's text alongside, and find-in-book. Arrow keys or
+  swiping turn pages.
+
+For a kiosk, `python app/server.py --kiosk` opens the browser automatically.
+
+## Project layout
+
+```
+ingest/   PDF inventory, OCR pipeline and command-line search (Python)
+app/      local web server and JSON API (Python, FastAPI)
+web/      website (Svelte + PDF.js), built into web/dist
+data/     library.db, generated; never committed
+```
