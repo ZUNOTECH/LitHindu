@@ -18,30 +18,15 @@ from pathlib import Path
 
 import pymupdf
 
+from textcheck import MIN_TEXT_CHARS, SCRIPTS, script_counts
+
 # Pages sampled per document; spread evenly so huge books stay fast.
 SAMPLE_PAGES = 25
-# A page with fewer extracted characters than this is treated as scanned.
-MIN_TEXT_CHARS = 50
-
-SCRIPTS = {
-    "devanagari": (0x0900, 0x097F),
-    "tamil": (0x0B80, 0x0BFF),
-    "latin": (0x0041, 0x024F),
-}
 
 FIELDS = [
     "path", "size_mb", "pages", "sampled", "text_pages", "scanned_pages",
     "kind", "devanagari", "tamil", "latin", "main_script", "title", "error",
 ]
-
-
-def count_scripts(text, counts):
-    for ch in text:
-        cp = ord(ch)
-        for name, (lo, hi) in SCRIPTS.items():
-            if lo <= cp <= hi:
-                counts[name] += 1
-                break
 
 
 def sample_indexes(n):
@@ -67,7 +52,8 @@ def inspect(path):
                 text = doc[i].get_text()
                 if len(text.strip()) >= MIN_TEXT_CHARS:
                     text_pages += 1
-                count_scripts(text, counts)
+                for k, v in script_counts(text).items():
+                    counts[k] += v
     except Exception as e:  # corrupt or unreadable file
         row["error"] = str(e)
         return row
