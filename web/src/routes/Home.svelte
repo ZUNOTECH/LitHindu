@@ -23,7 +23,7 @@
   const EXPLORE = [
     { title: 'Library', text: 'Every book, in Sanskrit, Hindi, Tamil and English. Open any page.', href: '#/library', icon: 'M4 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H4zM20 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z' },
     { title: 'Search', text: 'Find a verse, a name or an idea across all works, in any script.', href: '#/search', icon: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm9 16-3.5-3.5' },
-    { title: 'Timeline', text: 'From the Vedic age to today. The flow of history, teachers and ideas.', soon: true, icon: 'M3 12h18M7 12a1.5 1.5 0 1 0 0-.01M12 12a1.5 1.5 0 1 0 0-.01M17 12a1.5 1.5 0 1 0 0-.01M7 9V6m5 9v3m5-9V6' },
+    { title: 'Timeline', text: 'The Kala Chakra: five thousand years of history within the four ages of the cosmic cycle.', href: '#/timeline', icon: 'M3 12h18M7 12a1.5 1.5 0 1 0 0-.01M12 12a1.5 1.5 0 1 0 0-.01M17 12a1.5 1.5 0 1 0 0-.01M7 9V6m5 9v3m5-9V6' },
     { title: 'Encyclopedia', text: 'Deities, rishis, texts and concepts, each tied to its sources.', soon: true, icon: 'M12 3l9 5-9 5-9-5 9-5zm-9 9 9 5 9-5M3 16l9 5 9-5' },
   ];
 </script>

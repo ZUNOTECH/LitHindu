@@ -76,6 +76,13 @@ built; books show how much of them is searchable so far.
 - **Home:** a Sri Yantra drawn in light (Three.js), which follows the pointer
   and can be dragged; search everything; the largest works as 3D books.
 - **Library:** every book as a 3D object, filterable by language and title.
+- **Timeline:** the Kala Chakra, a 3D wheel of time. The inner ring carries
+  recorded history (ten eras, forty-odd events from the Sindhu-Sarasvati
+  cities to today) and turns under the visitor's hand: drag, flick, scroll or
+  arrow keys. The outer ring carries the four yugas in their 4:3:2:1
+  proportions. Every entry gives the scholarly dating and, where it differs,
+  the traditional one, and links into the library. Content lives in
+  `web/src/data/timeline.js`.
 - **Search:** results across all books with the matching passage highlighted.
 - **Reader:** the original PDF page by page (even 7,000-page books open
   instantly) with a page-turn animation, the page's text alongside, and
