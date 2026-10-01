@@ -1,0 +1,5 @@
+# Source PDFs and generated data stay out of git
+*.pdf
+inventory.csv
+__pycache__/
+.venv/
