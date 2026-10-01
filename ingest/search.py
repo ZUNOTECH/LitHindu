@@ -2,8 +2,8 @@
 
     python ingest/search.py agni
     python ingest/search.py "अग्नि" --limit 20
-    python ingest/search.py "dharma kshetra"     # pages containing all words
-    python ingest/search.py "yaj*"               # prefix search
+    python ingest/search.py dharma kshetra       # pages containing all words
+    python ingest/search.py '"dharma"'           # exact word only
 """
 
 import argparse
@@ -15,13 +15,19 @@ from build_library import DEFAULT_DB
 
 
 def fts_query(text):
-    """Turn free text into a safe FTS5 query: every word must match, '*' = prefix."""
+    """Turn free text into a safe FTS5 query.
+
+    Every word must appear on the page. Words match by their beginning, since
+    Sanskrit and Hindi words inflect (धर्म finds धर्मस्य, धर्मक्षेत्रे) and
+    English ones take suffixes (veda finds vedas, vedanta). Text in double
+    quotes matches exactly.
+    """
     terms = []
-    for word in re.findall(r"[^\s\"]+", text):
-        prefix = word.endswith("*")
-        word = word.rstrip("*")
-        if word:
-            terms.append(f'"{word}"' + ("*" if prefix else ""))
+    for exact, word in re.findall(r'"([^"]*)"|([^\s"]+)', text):
+        if exact.strip():
+            terms.append('"' + exact.strip() + '"')
+        elif word.rstrip("*"):
+            terms.append('"' + word.rstrip("*") + '"*')
     return " AND ".join(terms)
 
 
@@ -42,13 +48,13 @@ def search(conn, text, limit):
 
 def main():
     ap = argparse.ArgumentParser(description="Search the Lit Hindu library")
-    ap.add_argument("query")
+    ap.add_argument("query", nargs="+")
     ap.add_argument("--limit", type=int, default=10)
     ap.add_argument("--db", default=DEFAULT_DB)
     args = ap.parse_args()
 
     conn = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
-    results = search(conn, args.query, args.limit)
+    results = search(conn, " ".join(args.query), args.limit)
     if not results:
         sys.exit("No matches.")
     for title, page, source, snippet in results:

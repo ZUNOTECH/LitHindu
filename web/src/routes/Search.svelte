@@ -39,8 +39,8 @@
     <SearchBox value={q} size="large" placeholder="Search all books" autofocus={!q}
       onsearch={(text) => go(link('/search', { q: text }).slice(1))} />
     <p class="tips muted">
-      All words must appear on the page. Add <code>*</code> to match the start of a word (<code>yaj*</code>).
-      Sanskrit diacritics are optional: <code>siva</code> finds <code>śiva</code>.
+      All words must appear on the page, and word forms are included: <code>धर्म</code> also finds <code>धर्मस्य</code>.
+      Use quotes for an exact word (<code>"dharma"</code>). Diacritics are optional: <code>siva</code> finds <code>śiva</code>.
     </p>
   </div>
 

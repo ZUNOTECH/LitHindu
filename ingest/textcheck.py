@@ -2,6 +2,9 @@
 
 import re
 
+# Bump when the checks below change, so the build re-checks stored pages.
+VERSION = 2
+
 # A page with fewer extracted characters than this is treated as scanned.
 MIN_TEXT_CHARS = 50
 
@@ -41,6 +44,23 @@ def looks_legacy_font(text):
     return hits / len(words) > 0.03
 
 
+_INDIC = re.compile(r"[\u0900-\u097F\u0B80-\u0BFF]")
+_LATIN = re.compile(r"[A-Za-z\u00C0-\u02FF]")
+
+
+def looks_broken_unicode(text):
+    """True if Indic text came out garbled, e.g. धर्मक्षेत्रे as 'धùमZेŕे'.
+
+    PDFs whose fonts lack proper character maps extract conjuncts as stray
+    Latin letters inside Devanagari or Tamil words, which real text never has.
+    """
+    indic_words = [w for w in _WORD.findall(text) if _INDIC.search(w)]
+    if len(indic_words) < 5:
+        return False
+    mixed = sum(1 for w in indic_words if _LATIN.search(w))
+    return mixed / len(indic_words) > 0.1
+
+
 def usable_text(text):
     """True if embedded text is real, readable text rather than empty or garbage."""
     stripped = text.strip()
@@ -48,4 +68,4 @@ def usable_text(text):
         return False
     if stripped.count("�") / len(stripped) > 0.05:
         return False
-    return not looks_legacy_font(stripped)
+    return not (looks_legacy_font(stripped) or looks_broken_unicode(stripped))

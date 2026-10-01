@@ -24,7 +24,8 @@ from pathlib import Path
 import pymupdf
 
 import ocr
-from textcheck import looks_legacy_font, main_script, script_counts, usable_text
+import textcheck
+from textcheck import looks_broken_unicode, looks_legacy_font, main_script, script_counts, usable_text
 
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "library.db"
 CLASSIFY_SAMPLES = 12  # pages inspected per book to classify it
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS documents (
     title       TEXT,
     pages       INTEGER,
     script      TEXT,                   -- main script of the embedded text
-    legacy_font INTEGER,                -- 1 if typed in a legacy Hindi font
+    legacy_font INTEGER,                -- 1 if the text layer is garbled or in a legacy Hindi font
     ocr_lang    TEXT,                   -- Tesseract model for scanned pages
     ocr_script  TEXT,                   -- script Tesseract detected on scans
     classified  INTEGER NOT NULL DEFAULT 0,
@@ -122,6 +123,34 @@ def register(conn, root, only):
     return [str(p.relative_to(root)) for p in pdfs], added
 
 
+def recheck_text_pages(conn):
+    """Send stored pages back for OCR if improved checks now reject their text.
+
+    Books whose language was never detected (all sampled pages looked like
+    good text) are re-classified so their OCR uses the right language.
+    """
+    row = conn.execute("SELECT value FROM meta WHERE key = 'textcheck_version'").fetchone()
+    if row and int(row[0]) >= textcheck.VERSION:
+        return
+    redo = 0
+    for doc_id, ocr_script in conn.execute(
+            "SELECT id, ocr_script FROM documents WHERE classified = 1").fetchall():
+        bad = [pid for pid, text in conn.execute(
+            "SELECT id, text FROM pages WHERE doc_id = ? AND source = 'text'", (doc_id,))
+            if not usable_text(text)]
+        if not bad:
+            continue
+        conn.executemany("DELETE FROM pages WHERE id = ?", [(pid,) for pid in bad])
+        if ocr_script is None:
+            conn.execute("UPDATE documents SET classified = 0 WHERE id = ?", (doc_id,))
+        redo += len(bad)
+    conn.execute("INSERT OR REPLACE INTO meta VALUES ('textcheck_version', ?)",
+                 (str(textcheck.VERSION),))
+    conn.commit()
+    if redo:
+        print(f"Re-checking stored text: {redo:,} pages had garbled text and will be OCR'd.")
+
+
 # ---------------------------------------------------------------- workers
 
 def _init_worker():
@@ -143,7 +172,7 @@ def classify(path):
                 text = doc[i].get_text()
                 for k, v in script_counts(text).items():
                     counts[k] += v
-                legacy += looks_legacy_font(text)
+                legacy += looks_legacy_font(text) or looks_broken_unicode(text)
                 if not usable_text(text):
                     needs_ocr.append(i)
             script = main_script(counts)
@@ -303,7 +332,7 @@ def _fmt(seconds):
 def summary(conn):
     q = lambda sql: conn.execute(sql).fetchall()  # noqa: E731
     docs = q("SELECT COUNT(*), SUM(error IS NOT NULL), SUM(legacy_font) FROM documents")[0]
-    print(f"\nBooks: {docs[0]}  ({docs[1] or 0} unreadable, {docs[2] or 0} in legacy Hindi fonts)")
+    print(f"\nBooks: {docs[0]}  ({docs[1] or 0} unreadable, {docs[2] or 0} with garbled or legacy-font text)")
     print("Pages:")
     for source, n in q("SELECT source, COUNT(*) FROM pages GROUP BY source ORDER BY 2 DESC"):
         print(f"  {source:6} {n:>9,}")
@@ -339,6 +368,7 @@ def main():
     if not paths:
         sys.exit(f"No PDFs found under {root}")
     print(f"{len(paths)} PDFs ({added} new or changed). Database: {args.db}")
+    recheck_text_pages(conn)
 
     with ProcessPoolExecutor(max_workers=args.workers, initializer=_init_worker) as pool:
         try:

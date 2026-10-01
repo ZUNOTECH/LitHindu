@@ -48,10 +48,11 @@ caffeinate -i python ingest/build_library.py "/path/to/your/pdf/folder"
 ```bash
 python ingest/search.py agni
 python ingest/search.py "अग्नि"
-python ingest/search.py "yaj*"          # prefix search
+python ingest/search.py '"dharma"'     # exact word only
 ```
 
-Search matches whole words in any script. Sanskrit diacritics are optional
+Search works in any script and includes word forms (धर्म finds धर्मस्य);
+quotes give an exact match. Sanskrit diacritics are optional
 (`siva` finds `śiva`), and each result shows the book and page number.
 
 ## Step 4: the website
