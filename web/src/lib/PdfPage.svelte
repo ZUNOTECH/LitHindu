@@ -1,5 +1,5 @@
 <script>
-  let { pdf, pageNumber, width, onerror } = $props();
+  let { pdf, pageNumber, width, onerror, onrendered } = $props();
 
   let canvas;
   let renderTask = null;
@@ -33,6 +33,7 @@
         canvas.style.width = `${Math.floor(w)}px`;
         canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
         rendering = false;
+        onrendered?.(n);
       } catch (e) {
         if (e?.name !== 'RenderingCancelledException' && !cancelled) onerror?.(e);
       }
@@ -49,7 +50,7 @@
 </div>
 
 <style>
-  .page { display: inline-block; background: #fff; box-shadow: var(--shadow); line-height: 0; transition: opacity 0.15s; }
-  .page.rendering { opacity: 0.6; }
+  .page { display: inline-block; background: #fff; line-height: 0; transition: opacity 0.2s; border-radius: 2px; box-shadow: 0 0 0 1px rgba(255, 214, 160, 0.12), 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(242, 184, 90, 0.08); }
+  .page.rendering { opacity: 0.55; }
   canvas { display: block; }
 </style>

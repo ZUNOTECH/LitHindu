@@ -73,12 +73,18 @@ python app/server.py
 Then open http://localhost:8000. It works while the library is still being
 built; books show how much of them is searchable so far.
 
-- **Home:** search everything and see the largest works.
-- **Library:** every book, filterable by language and title.
+- **Home:** a Sri Yantra drawn in light (Three.js), which follows the pointer
+  and can be dragged; search everything; the largest works as 3D books.
+- **Library:** every book as a 3D object, filterable by language and title.
 - **Search:** results across all books with the matching passage highlighted.
 - **Reader:** the original PDF page by page (even 7,000-page books open
-  instantly), the page's text alongside, and find-in-book. Arrow keys or
-  swiping turn pages.
+  instantly) with a page-turn animation, the page's text alongside, and
+  find-in-book. Arrow keys or swiping turn pages.
+
+The design ("Jyoti", light) is dark by intention, for screens in dim halls,
+and everything is bundled: fonts, Three.js, PDF.js. Motion is reduced for
+visitors who ask for it (`prefers-reduced-motion`), the 3D scene pauses when
+off screen, and a browser without WebGL gets a flat drawing of the yantra.
 
 For a kiosk, `python app/server.py --kiosk` opens the browser automatically.
 
