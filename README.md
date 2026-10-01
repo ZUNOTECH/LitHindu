@@ -1,4 +1,4 @@
-# Life
+# Lit Hindu
 
 An offline encyclopedia and library of Sanatana Dharma, covering its history,
 texts and traditions from the beginning to today. It runs entirely on local
