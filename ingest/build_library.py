@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS documents (
     ocr_lang    TEXT,                   -- Tesseract model for scanned pages
     ocr_script  TEXT,                   -- script Tesseract detected on scans
     classified  INTEGER NOT NULL DEFAULT 0,
+    forced_lang TEXT,                   -- set by --lang: skip detection
     error       TEXT
 );
 
@@ -86,6 +87,10 @@ def connect(db_path):
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.executescript(SCHEMA)
+    # Columns added after the first release.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(documents)")}
+    if "forced_lang" not in cols:
+        conn.execute("ALTER TABLE documents ADD COLUMN forced_lang TEXT")
     return conn
 
 
@@ -158,7 +163,7 @@ def _init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def classify(path):
+def classify(path, forced_lang=None):
     """Inspect a book: page count, scripts, legacy fonts and best OCR language."""
     result = {"error": None}
     try:
@@ -182,8 +187,11 @@ def classify(path):
                 # Sample from the middle of the book, away from covers and blank leaves.
                 mid = len(needs_ocr) // 2
                 chosen = needs_ocr[max(0, mid - LANG_SAMPLES // 2):][:LANG_SAMPLES]
-                pngs = [ocr.render_png(doc[i]) for i in chosen]
-                lang, ocr_script, _ = ocr.choose_language(pngs)
+                if forced_lang:
+                    lang, ocr_script = forced_lang, "forced"
+                else:
+                    pngs = [ocr.render_png(doc[i]) for i in chosen]
+                    lang, ocr_script, _ = ocr.choose_language(pngs)
                 result["ocr_lang"], result["ocr_script"] = lang, ocr_script
             else:
                 # Every sampled page had text; keep a sensible model for any that don't.
@@ -224,12 +232,12 @@ def process_pages(path, lang, page_numbers):
 
 def run_classify(conn, root, paths, pool):
     todo = conn.execute(
-        f"SELECT id, path FROM documents WHERE classified = 0 AND path IN "
+        f"SELECT id, path, forced_lang FROM documents WHERE classified = 0 AND path IN "
         f"({','.join('?' * len(paths))})", paths).fetchall()
     if not todo:
         return
     print(f"Classifying {len(todo)} books (sampling pages, detecting languages)...")
-    futures = {pool.submit(classify, str(root / p)): (i, p) for i, p in todo}
+    futures = {pool.submit(classify, str(root / p), forced): (i, p) for i, p, forced in todo}
     for n, fut in enumerate(as_completed(futures), 1):
         doc_id, rel = futures[fut]
         r = fut.result()
@@ -360,6 +368,9 @@ def main():
     ap.add_argument("--redo", action="append", default=[], metavar="TEXT",
                     help="start over on books whose path contains TEXT (repeatable), "
                          "e.g. after adding a language")
+    ap.add_argument("--lang", metavar="CODE",
+                    help="with --redo: use this Tesseract language for those books instead of "
+                         "detecting it, e.g. guj, ori, mar, san+eng")
     args = ap.parse_args()
 
     ocr.check_tesseract()
@@ -372,13 +383,18 @@ def main():
         sys.exit(f"No PDFs found under {root}")
     print(f"{len(paths)} PDFs ({added} new or changed). Database: {args.db}")
     recheck_text_pages(conn)
+    if args.lang and not args.redo:
+        sys.exit("--lang only applies to books named with --redo")
+    if args.lang and not ocr._usable(args.lang):
+        sys.exit(f"Tesseract does not have the language {args.lang!r}")
     for text in args.redo:
         rows = conn.execute("SELECT id, path FROM documents WHERE lower(path) LIKE ?",
                             (f"%{text.lower()}%",)).fetchall()
         for doc_id, rel in rows:
             conn.execute("DELETE FROM pages WHERE doc_id = ?", (doc_id,))
-            conn.execute("UPDATE documents SET classified = 0 WHERE id = ?", (doc_id,))
-            print(f"Starting over: {rel}")
+            conn.execute("UPDATE documents SET classified = 0, forced_lang = ? WHERE id = ?",
+                         (args.lang, doc_id))
+            print(f"Starting over: {rel}" + (f" as {args.lang}" if args.lang else ""))
         if not rows:
             print(f"--redo {text!r} matched no book")
     conn.commit()

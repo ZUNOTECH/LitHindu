@@ -8,8 +8,6 @@ import subprocess
 
 import pymupdf
 
-from textcheck import main_script, script_counts
-
 # Rendering resolution for OCR. 300 dpi is Tesseract's sweet spot; very large
 # pages are scaled down so no image exceeds MAX_SIDE pixels.
 OCR_DPI = 300
@@ -33,9 +31,14 @@ FALLBACK_LANG = {"devanagari": "hin+san", "tamil": "tam", "latin": "eng"}
 REQUIRED_LANGS = {"eng", "hin", "san", "tam"}
 # Other Indian scripts in the library. Missing ones are skipped with a warning.
 OPTIONAL_LANGS = {"mar", "nep", "ben", "pan", "guj", "ori", "tel", "kan", "mal"}
-# Broad model used once per sample page just to see which script it is in.
-# (Tesseract's own script detection often mistakes Devanagari for Latin.)
-PROBE_LANG = "hin+eng+tam+guj+ori+ben+tel+kan+mal"
+# One model per script, tried on the sample pages to find the script a book
+# is in: the model that reads with the highest confidence wins. (Tesseract's
+# own script detection, and a combined multi-script model, both tend to
+# mistake other Indian scripts for Devanagari on real scans.)
+SCRIPT_MODEL = {
+    "devanagari": "hin", "bengali": "ben", "gurmukhi": "pan", "gujarati": "guj", "odia": "ori",
+    "tamil": "tam", "telugu": "tel", "kannada": "kan", "malayalam": "mal", "latin": "eng",
+}
 
 # Each extra model in a combination must earn this many confidence points.
 COMBO_PENALTY = 2.0
@@ -53,13 +56,12 @@ def check_tesseract():
     if missing:
         raise SystemExit(f"Tesseract is missing languages: {', '.join(sorted(missing))}. "
                          "On a Mac: brew install tesseract-lang")
-    global PROBE_LANG, AVAILABLE
+    global AVAILABLE
     AVAILABLE = have
     optional_missing = OPTIONAL_LANGS - have
     if optional_missing:
         print(f"Note: Tesseract lacks {', '.join(sorted(optional_missing))}; books in those "
               "scripts will be read with the nearest available model.")
-    PROBE_LANG = "+".join(code for code in PROBE_LANG.split("+") if code in have)
 
 
 AVAILABLE = None
@@ -110,23 +112,33 @@ def ocr(png, lang):
     return text, (sum(confs) / len(confs) if confs else 0.0)
 
 
-def detect_script(png):
-    """Main script on a rendered page: 'devanagari', 'tamil', 'latin' or None."""
-    return main_script(script_counts(ocr(png, PROBE_LANG)[0]))
-
-
 def choose_language(pngs):
     """Pick the Tesseract model that reads these sample pages best.
 
-    Returns (lang, script, confidence).
+    First the script: each script's model reads the pages and the most
+    confident wins (a model can only produce its own script, so confidence
+    is a fair judge). Then the language within that script, where combined
+    models must earn their keep. Returns (lang, script, confidence).
     """
-    scripts = [s for s in (detect_script(p) for p in pngs) if s]
-    script = max(set(scripts), key=scripts.count) if scripts else "latin"
+    scores = {}
+
+    def score(lang):
+        if lang not in scores:
+            results = [ocr(p, lang) for p in pngs]
+            conf = sum(r[1] for r in results) / len(results)
+            # Confidence on near-empty output means nothing was really read.
+            chars = sum(len(r[0].strip()) for r in results)
+            scores[lang] = conf if chars >= 20 * len(pngs) else conf * 0.5
+        return scores[lang]
+
+    by_script = {s: score(m) for s, m in SCRIPT_MODEL.items() if _usable(m)}
+    script = max(by_script, key=by_script.get) if by_script else "latin"
+    # Devanagari covers several languages; Marathi and Nepali only matter
+    # when they read clearly better than Hindi, so try them second.
     candidates = [c for c in CANDIDATES.get(script, ["eng"]) if _usable(c)] or ["eng"]
     best = None
     for lang in candidates:
-        confs = [ocr(p, lang)[1] for p in pngs]
-        score = sum(confs) / len(confs) - COMBO_PENALTY * lang.count("+")
-        if best is None or score > best[0]:
-            best = (score, lang)
+        s = score(lang) - COMBO_PENALTY * lang.count("+")
+        if best is None or s > best[0]:
+            best = (s, lang)
     return best[1], script, best[0]

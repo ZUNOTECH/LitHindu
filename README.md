@@ -44,8 +44,10 @@ caffeinate -i python ingest/build_library.py "/path/to/your/pdf/folder"
 - Adding new PDFs later and re-running processes only the new ones.
 - Scripts covered: Devanagari (Hindi, Sanskrit, Marathi, Nepali), Tamil,
   Gujarati, Odia, Bengali, Gurmukhi, Telugu, Kannada, Malayalam and Latin.
-  `--redo TEXT` starts over on books whose file name contains TEXT, for
-  example after a language is added.
+  Each scanned book's script is found by letting every script's model read
+  sample pages and keeping the most confident. `--redo TEXT` starts over on
+  books whose file name contains TEXT; add `--lang guj` (or `ori`, `mar`,
+  `san+eng`, ...) to state the language yourself instead of detecting it.
 
 ## Comparing OCR engines
 
