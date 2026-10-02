@@ -183,15 +183,14 @@ def classify(path, forced_lang=None):
             script = main_script(counts)
             result["script"] = script
             result["legacy_font"] = int(legacy > 0)
-            if needs_ocr:
+            if forced_lang:
+                result["ocr_lang"], result["ocr_script"] = forced_lang, "forced"
+            elif needs_ocr:
                 # Sample from the middle of the book, away from covers and blank leaves.
                 mid = len(needs_ocr) // 2
                 chosen = needs_ocr[max(0, mid - LANG_SAMPLES // 2):][:LANG_SAMPLES]
-                if forced_lang:
-                    lang, ocr_script = forced_lang, "forced"
-                else:
-                    pngs = [ocr.render_png(doc[i]) for i in chosen]
-                    lang, ocr_script, _ = ocr.choose_language(pngs)
+                pngs = [ocr.render_png(doc[i]) for i in chosen]
+                lang, ocr_script, _ = ocr.choose_language(pngs)
                 result["ocr_lang"], result["ocr_script"] = lang, ocr_script
             else:
                 # Every sampled page had text; keep a sensible model for any that don't.
@@ -348,13 +347,14 @@ def summary(conn):
     for lang, n in q("SELECT ocr_lang, COUNT(*) FROM documents WHERE ocr_script IS NOT NULL "
                      "GROUP BY ocr_lang ORDER BY 2 DESC"):
         print(f"  {lang:10} {n:4}")
-    low = q("SELECT d.title, COUNT(*), ROUND(AVG(p.confidence)) FROM pages p "
+    low = q("SELECT d.title, COUNT(*), ROUND(AVG(p.confidence)), d.pages, d.ocr_lang FROM pages p "
             "JOIN documents d ON d.id = p.doc_id WHERE p.source = 'ocr' "
             "GROUP BY d.id HAVING AVG(p.confidence) < 60 ORDER BY 3")
     if low:
         print("Books with weak OCR (average confidence below 60):")
-        for title, n, conf in low:
-            print(f"  {conf:>3.0f}  {title} ({n:,} pages)")
+        for title, n, conf, total, lang in low:
+            share = f"{n:,} of {total:,} pages scanned" if n < total * 0.9 else f"{n:,} pages, whole book scanned"
+            print(f"  {conf:>3.0f}  {title}  ({share}, read as {lang})")
     for path, err in q("SELECT path, error FROM documents WHERE error IS NOT NULL"):
         print(f"  ERROR {path}: {err}")
 

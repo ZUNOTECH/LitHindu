@@ -27,7 +27,6 @@ CANDIDATES = {
     "malayalam": ["mal", "mal+eng"],
     "latin": ["eng", "eng+san", "eng+hin"],
 }
-FALLBACK_LANG = {"devanagari": "hin+san", "tamil": "tam", "latin": "eng"}
 REQUIRED_LANGS = {"eng", "hin", "san", "tam"}
 # Other Indian scripts in the library. Missing ones are skipped with a warning.
 OPTIONAL_LANGS = {"mar", "nep", "ben", "pan", "guj", "ori", "tel", "kan", "mal"}
@@ -39,6 +38,10 @@ SCRIPT_MODEL = {
     "devanagari": "hin", "bengali": "ben", "gurmukhi": "pan", "gujarati": "guj", "odia": "ori",
     "tamil": "tam", "telugu": "tel", "kannada": "kan", "malayalam": "mal", "latin": "eng",
 }
+
+# For a book whose sampled pages all carry text, the odd scanned page is read
+# with the model for the script of that text.
+FALLBACK_LANG = {"devanagari": "hin+san", **{s: m for s, m in SCRIPT_MODEL.items() if s != "devanagari"}}
 
 # Each extra model in a combination must earn this many confidence points.
 COMBO_PENALTY = 2.0
