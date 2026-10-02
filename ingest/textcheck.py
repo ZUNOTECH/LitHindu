@@ -3,14 +3,21 @@
 import re
 
 # Bump when the checks below change, so the build re-checks stored pages.
-VERSION = 2
+VERSION = 3
 
 # A page with fewer extracted characters than this is treated as scanned.
 MIN_TEXT_CHARS = 50
 
 SCRIPTS = {
     "devanagari": (0x0900, 0x097F),
+    "bengali": (0x0980, 0x09FF),
+    "gurmukhi": (0x0A00, 0x0A7F),
+    "gujarati": (0x0A80, 0x0AFF),
+    "odia": (0x0B00, 0x0B7F),
     "tamil": (0x0B80, 0x0BFF),
+    "telugu": (0x0C00, 0x0C7F),
+    "kannada": (0x0C80, 0x0CFF),
+    "malayalam": (0x0D00, 0x0D7F),
     "latin": (0x0041, 0x024F),
 }
 
@@ -44,7 +51,7 @@ def looks_legacy_font(text):
     return hits / len(words) > 0.03
 
 
-_INDIC = re.compile(r"[\u0900-\u097F\u0B80-\u0BFF]")
+_INDIC = re.compile(r"[\u0900-\u0DFF]")
 _LATIN = re.compile(r"[A-Za-z\u00C0-\u02FF]")
 
 

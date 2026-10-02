@@ -27,9 +27,15 @@ from search import fts_query  # noqa: E402
 WEB_DIST = ROOT / "web" / "dist"
 
 LANGUAGE_NAMES = {
-    "hin": "Hindi", "san": "Sanskrit", "tam": "Tamil", "eng": "English",
+    "hin": "Hindi", "san": "Sanskrit", "tam": "Tamil", "eng": "English", "mar": "Marathi",
+    "nep": "Nepali", "ben": "Bengali", "pan": "Punjabi", "guj": "Gujarati", "ori": "Odia",
+    "tel": "Telugu", "kan": "Kannada", "mal": "Malayalam",
 }
-SCRIPT_LANGUAGE = {"devanagari": "Hindi / Sanskrit", "tamil": "Tamil", "latin": "English"}
+SCRIPT_LANGUAGE = {
+    "devanagari": "Hindi / Sanskrit", "tamil": "Tamil", "latin": "English", "bengali": "Bengali",
+    "gurmukhi": "Punjabi", "gujarati": "Gujarati", "odia": "Odia", "telugu": "Telugu",
+    "kannada": "Kannada", "malayalam": "Malayalam",
+}
 
 
 def language_of(row):

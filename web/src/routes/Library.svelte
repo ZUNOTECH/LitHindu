@@ -3,7 +3,6 @@
   import { reveal } from '../lib/actions/reveal.js';
   import Book3D from '../lib/Book3D.svelte';
 
-  const LANGUAGES = ['All', 'Sanskrit', 'Hindi', 'Tamil', 'English'];
 
   let books = $state([]);
   let loading = $state(true);
@@ -25,6 +24,12 @@
         b.title.toLowerCase().includes(filter.trim().toLowerCase()),
     ),
   );
+  // One chip per language actually in the library, most common first.
+  const LANGUAGES = $derived.by(() => {
+    const n = {};
+    for (const b of books) for (const l of b.language.split(/ \+ | \/ /)) n[l] = (n[l] || 0) + 1;
+    return ['All', ...Object.keys(n).sort((a, b) => n[b] - n[a])];
+  });
   const counts = $derived(Object.fromEntries(LANGUAGES.map((l) => [l, l === 'All' ? books.length : books.filter((b) => b.language.includes(l)).length])));
 </script>
 

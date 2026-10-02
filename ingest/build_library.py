@@ -25,7 +25,7 @@ import pymupdf
 
 import ocr
 import textcheck
-from textcheck import looks_broken_unicode, looks_legacy_font, main_script, script_counts, usable_text
+from textcheck import SCRIPTS, looks_broken_unicode, looks_legacy_font, main_script, script_counts, usable_text
 
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "library.db"
 CLASSIFY_SAMPLES = 12  # pages inspected per book to classify it
@@ -166,7 +166,7 @@ def classify(path):
             if doc.needs_pass:
                 return {"error": "password protected"}
             result["pages"] = doc.page_count
-            counts = dict.fromkeys(("devanagari", "tamil", "latin"), 0)
+            counts = dict.fromkeys(SCRIPTS, 0)
             legacy, needs_ocr = 0, []
             for i in sample_indexes(doc.page_count, CLASSIFY_SAMPLES):
                 text = doc[i].get_text()
@@ -357,6 +357,9 @@ def main():
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--only", help="process only PDFs whose path contains this text")
+    ap.add_argument("--redo", action="append", default=[], metavar="TEXT",
+                    help="start over on books whose path contains TEXT (repeatable), "
+                         "e.g. after adding a language")
     args = ap.parse_args()
 
     ocr.check_tesseract()
@@ -369,6 +372,16 @@ def main():
         sys.exit(f"No PDFs found under {root}")
     print(f"{len(paths)} PDFs ({added} new or changed). Database: {args.db}")
     recheck_text_pages(conn)
+    for text in args.redo:
+        rows = conn.execute("SELECT id, path FROM documents WHERE lower(path) LIKE ?",
+                            (f"%{text.lower()}%",)).fetchall()
+        for doc_id, rel in rows:
+            conn.execute("DELETE FROM pages WHERE doc_id = ?", (doc_id,))
+            conn.execute("UPDATE documents SET classified = 0 WHERE id = ?", (doc_id,))
+            print(f"Starting over: {rel}")
+        if not rows:
+            print(f"--redo {text!r} matched no book")
+    conn.commit()
 
     with ProcessPoolExecutor(max_workers=args.workers, initializer=_init_worker) as pool:
         try:

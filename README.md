@@ -42,6 +42,21 @@ caffeinate -i python ingest/build_library.py "/path/to/your/pdf/folder"
 - **Resumable:** press Ctrl+C to pause, then run the same command to continue.
   `caffeinate -i` stops the Mac from sleeping while it runs.
 - Adding new PDFs later and re-running processes only the new ones.
+- Scripts covered: Devanagari (Hindi, Sanskrit, Marathi, Nepali), Tamil,
+  Gujarati, Odia, Bengali, Gurmukhi, Telugu, Kannada, Malayalam and Latin.
+  `--redo TEXT` starts over on books whose file name contains TEXT, for
+  example after a language is added.
+
+## Comparing OCR engines
+
+```bash
+pip install surya-ocr          # optional; downloads its models on first run
+python ingest/compare_ocr.py   # 3 pages from each of the 6 weakest books
+python ingest/compare_ocr.py --book rigved --book "sarala" --pages 4
+```
+
+Writes `data/ocr_compare.html`: each page image beside every engine's
+text, for someone who reads the script to judge.
 
 ## Step 3: search
 

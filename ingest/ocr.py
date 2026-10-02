@@ -18,15 +18,24 @@ MAX_SIDE = 5000
 # Tesseract models to try for each script. Mixed-language books (Sanskrit verse with English translation,
 # for example) are covered by the combined models.
 CANDIDATES = {
-    "devanagari": ["hin", "san", "hin+eng", "san+eng"],
+    "devanagari": ["hin", "san", "mar", "nep", "hin+eng", "san+eng"],
+    "bengali": ["ben", "ben+eng"],
+    "gurmukhi": ["pan", "pan+eng"],
+    "gujarati": ["guj", "guj+eng"],
+    "odia": ["ori", "ori+eng"],
     "tamil": ["tam", "tam+eng"],
+    "telugu": ["tel", "tel+eng"],
+    "kannada": ["kan", "kan+eng"],
+    "malayalam": ["mal", "mal+eng"],
     "latin": ["eng", "eng+san", "eng+hin"],
 }
 FALLBACK_LANG = {"devanagari": "hin+san", "tamil": "tam", "latin": "eng"}
 REQUIRED_LANGS = {"eng", "hin", "san", "tam"}
+# Other Indian scripts in the library. Missing ones are skipped with a warning.
+OPTIONAL_LANGS = {"mar", "nep", "ben", "pan", "guj", "ori", "tel", "kan", "mal"}
 # Broad model used once per sample page just to see which script it is in.
 # (Tesseract's own script detection often mistakes Devanagari for Latin.)
-PROBE_LANG = "hin+tam+eng"
+PROBE_LANG = "hin+eng+tam+guj+ori+ben+tel+kan+mal"
 
 # Each extra model in a combination must earn this many confidence points.
 COMBO_PENALTY = 2.0
@@ -44,6 +53,20 @@ def check_tesseract():
     if missing:
         raise SystemExit(f"Tesseract is missing languages: {', '.join(sorted(missing))}. "
                          "On a Mac: brew install tesseract-lang")
+    global PROBE_LANG, AVAILABLE
+    AVAILABLE = have
+    optional_missing = OPTIONAL_LANGS - have
+    if optional_missing:
+        print(f"Note: Tesseract lacks {', '.join(sorted(optional_missing))}; books in those "
+              "scripts will be read with the nearest available model.")
+    PROBE_LANG = "+".join(code for code in PROBE_LANG.split("+") if code in have)
+
+
+AVAILABLE = None
+
+
+def _usable(lang):
+    return AVAILABLE is None or all(code in AVAILABLE for code in lang.split("+"))
 
 
 def render_png(page):
@@ -99,7 +122,7 @@ def choose_language(pngs):
     """
     scripts = [s for s in (detect_script(p) for p in pngs) if s]
     script = max(set(scripts), key=scripts.count) if scripts else "latin"
-    candidates = CANDIDATES.get(script, ["eng"])
+    candidates = [c for c in CANDIDATES.get(script, ["eng"]) if _usable(c)] or ["eng"]
     best = None
     for lang in candidates:
         confs = [ocr(p, lang)[1] for p in pngs]
