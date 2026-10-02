@@ -30,9 +30,10 @@ CATALOG = Path(__file__).resolve().parent.parent / "catalog" / "books.csv"
 FIELDS = ["file", "title", "author", "language", "category", "pages", "notes"]
 
 CATEGORIES = [
-    "Vedas", "Upanishads", "Itihasa", "Puranas", "Bhagavad Gita", "Dharmashastra",
-    "Darshana", "Bhakti", "Tantra and Agama", "Yoga", "Stotras and Mantras",
-    "Modern Teachers", "History and Reference", "Other",
+    "Vedas", "Upanishads", "Itihasa", "Puranas", "Bhagavad Gita", "Dharmashastra and Niti",
+    "Darshana", "Bhakti", "Tantra and Agama", "Yoga", "Stotras and Mantras", "Modern Teachers",
+    "Jyotisha", "Ayurveda and Sciences", "History and Reference", "Reference Articles",
+    "Research Papers", "Other",
 ]
 
 # Words whose spelling the auto-cleaner knows; keys are lower-case forms as
