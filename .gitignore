@@ -3,4 +3,4 @@
 inventory.csv
 __pycache__/
 .venv/
-data/
+/data/
