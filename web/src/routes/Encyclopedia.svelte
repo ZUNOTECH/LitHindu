@@ -174,15 +174,16 @@
   .chip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; transition: border-color 0.25s, box-shadow 0.3s; }
   .chip:hover { text-decoration: none; border-color: var(--border-strong); box-shadow: var(--glow); }
   .rel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-  .rel a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 8px; margin: 0 -8px; border-radius: 10px; color: var(--text); }
+  .rel a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 8px; margin: 0 -8px; border-radius: 10px; color: var(--text); min-width: 0; }
+  .rel a > span { min-width: 0; }
   .rel a:hover { text-decoration: none; background: var(--surface-2); }
-  .rel-sa { font-family: var(--font-devanagari); color: var(--gold); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+  .rel-sa { font-family: var(--font-devanagari); color: var(--gold); flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
   .rel .badge { margin-left: auto; }
   .pager { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 15px; }
   .pager a { min-height: var(--tap); display: inline-flex; align-items: center; }
   .pager a:last-child { justify-self: end; }
   @media (max-width: 900px) {
-    .entry-grid { grid-template-columns: 1fr; }
+    .entry-grid { grid-template-columns: minmax(0, 1fr); }
     .side { position: static; }
     .facts div { grid-template-columns: 1fr; gap: 2px; }
   }
