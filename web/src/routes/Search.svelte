@@ -5,6 +5,7 @@
   import { snippetHtml } from '../lib/highlight.js';
   import { reveal } from '../lib/actions/reveal.js';
   import SearchBox from '../lib/SearchBox.svelte';
+  import { searchEntries, TYPES } from '../lib/encyclopedia.js';
 
   const PAGE = 20;
   const q = $derived(route.params.get('q') || '');
@@ -37,6 +38,8 @@
     if (q) load(q, 0);
   });
 
+  const entries = $derived(q ? searchEntries(q, 4) : []);
+
   const SUGGESTIONS = ['dharma', 'अग्नि', 'moksha', 'திருக்குறள்', 'yoga', 'ब्रह्म'];
 </script>
 
@@ -59,6 +62,21 @@
       </div>
     {/if}
   </div>
+
+  {#if entries.length}
+    <section class="entries" in:fly={{ y: 12, duration: 400 }}>
+      <p class="muted found">In the encyclopedia</p>
+      <div class="entry-row">
+        {#each entries as e (e.id)}
+          <a class="entry glass" href={link(`/encyclopedia/${e.id}`)}>
+            <span class="entry-sa">{e.sa}</span>
+            <strong>{e.name}</strong>
+            <span class="badge">{TYPES[e.type].one}</span>
+          </a>
+        {/each}
+      </div>
+    </section>
+  {/if}
 
   {#if error}
     <p class="muted">{error}</p>
@@ -105,6 +123,11 @@
   .chip { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); background: var(--surface); transition: border-color 0.25s, box-shadow 0.3s; }
   .chip:hover { text-decoration: none; border-color: var(--border-strong); box-shadow: var(--glow); }
   .found, .empty { margin: 32px 0 14px; }
+  .entries .found { margin-bottom: 10px; }
+  .entry-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .entry { display: inline-flex; align-items: center; gap: 12px; padding: 10px 16px 10px 14px; border-radius: 999px; color: var(--text); transition: border-color 0.3s, box-shadow 0.4s; }
+  .entry:hover { text-decoration: none; border-color: var(--border-strong); box-shadow: var(--glow); }
+  .entry-sa { font-family: var(--font-devanagari); color: var(--gold); font-size: 17px; }
   .results { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; max-width: 960px; }
   .results a {
     position: relative;

@@ -7,6 +7,7 @@
   import Search from './routes/Search.svelte';
   import Reader from './routes/Reader.svelte';
   import Timeline from './routes/Timeline.svelte';
+  import Encyclopedia from './routes/Encyclopedia.svelte';
 
   const section = $derived(route.parts[0] || 'home');
   let scrolled = $state(false);
@@ -39,6 +40,7 @@
         <a href="#/library" class:active={section === 'library'}>Library</a>
         <a href="#/search" class:active={section === 'search'}>Search</a>
         <a href="#/timeline" class:active={section === 'timeline'}>Timeline</a>
+        <a href="#/encyclopedia" class:active={section === 'encyclopedia'}>Encyclopedia</a>
       </nav>
     </div>
   </header>
@@ -51,6 +53,8 @@
           <Search />
         {:else if section === 'timeline'}
           <Timeline />
+        {:else if section === 'encyclopedia'}
+          {#key route.parts[1] || ''}<Encyclopedia />{/key}
         {:else}
           <Home />
         {/if}
@@ -110,5 +114,6 @@
   main { flex: 1; position: relative; z-index: 1; }
   footer { display: flex; justify-content: center; gap: 10px; padding: 48px 16px 40px; font-size: 14px; }
   .name { white-space: nowrap; }
-  @media (max-width: 600px) { .name { font-size: 21px; } .brand { gap: 8px; } nav a { padding: 0 10px; font-size: 15px; } }
+  @media (max-width: 760px) { .name { font-size: 20px; } .brand { gap: 8px; } nav a { padding: 0 9px; font-size: 14px; } nav { gap: 0; } }
+  @media (max-width: 560px) { .name { display: none; } nav a { padding: 0 8px; } }
 </style>

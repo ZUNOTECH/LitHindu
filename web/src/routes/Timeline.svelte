@@ -5,6 +5,7 @@
   import { layout, RING } from '../lib/chakraLayout.js';
   import { formatYear } from '../data/timeline.js';
   import { reveal } from '../lib/actions/reveal.js';
+  import { entriesFor, TYPES } from '../lib/encyclopedia.js';
 
   const L = layout();
   const events = L.events;
@@ -29,6 +30,7 @@
   );
   const currentEra = $derived(selected.kind === 'event' ? eras.find((e) => e.id === current.era) : selected.kind === 'era' ? current : null);
   const eventIndex = $derived(selected.kind === 'event' ? selected.id : -1);
+  const entries = $derived(entriesFor(selected.kind, selected.kind === 'event' ? current.name : current.id));
 
   function select(kind, id) {
     selected = { kind, id };
@@ -247,6 +249,15 @@
             <p class="muted small">The cosmic ring turns on its own. Tradition counts a full cycle of four yugas at 4,320,000 years; a thousand such cycles make one day of Brahma.</p>
           {/if}
 
+          {#if entries.length}
+            <h3>In the encyclopedia</h3>
+            <div class="chips">
+              {#each entries as e (e.id)}
+                <a class="chip" href={link(`/encyclopedia/${e.id}`)}><span class="chip-sa">{e.sa}</span>{e.name}</a>
+              {/each}
+            </div>
+          {/if}
+
           <h3>In the library</h3>
           <div class="chips">
             {#each current.library as q}
@@ -284,7 +295,7 @@
 </div>
 
 <style>
-  .head { padding: 36px 0 8px; max-width: 900px; }
+  .head { padding-block: 36px 8px; max-width: 900px; }
   .kicker { margin: 0 0 4px; font-family: var(--font-devanagari); color: var(--gold); font-size: 16px; }
   h1 { margin: 0 0 10px; font-size: clamp(38px, 4.5vw, 56px); }
   .lede { margin: 0; max-width: 64ch; }
@@ -365,6 +376,7 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; transition: border-color 0.25s, box-shadow 0.3s; }
   .chip:hover { text-decoration: none; border-color: var(--border-strong); box-shadow: var(--glow); }
+  .chip-sa { font-family: var(--font-devanagari); color: var(--gold); margin-right: 8px; }
   .small { font-size: 14px; }
   .panel-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
   .counter { font-variant-numeric: tabular-nums; font-size: 13px; }

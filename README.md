@@ -100,6 +100,12 @@ built; books show how much of them is searchable so far.
   proportions. Every entry gives the scholarly dating and, where it differs,
   the traditional one, and links into the library. Content lives in
   `web/src/data/timeline.js`.
+- **Encyclopedia:** 92 entries, deities, rishis and acharyas, texts, concepts,
+  schools, places and festivals, each with its Devanagari name, a summary,
+  key facts, a note where traditions differ, related entries, links onto the
+  wheel of time and searches into the library. Search shows matching entries
+  above page results, and timeline entries link to theirs. Content lives in
+  `web/src/data/encyclopedia.js`.
 - **Search:** results across all books with the matching passage highlighted.
 - **Reader:** the original PDF page by page (even 7,000-page books open
   instantly) with a page-turn animation, the page's text alongside, and
