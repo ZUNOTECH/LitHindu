@@ -29,6 +29,7 @@
         <div class="cover-art">
           <span class="ornament" aria-hidden="true">✦</span>
           <h3>{short}</h3>
+          {#if book.author}<span class="author">{book.author}</span>{/if}
           <span class="lang">{book.language}</span>
         </div>
         <div class="sheen" aria-hidden="true"></div>
@@ -43,7 +44,7 @@
   {#if showMeta}
     <div class="meta">
       <strong>{book.title}</strong>
-      <span class="muted">{book.pages.toLocaleString()} pages{book.scanned ? ' · scanned' : ''}</span>
+      <span class="muted">{book.author ? book.author + ' · ' : ''}{book.pages.toLocaleString()} pages</span>
       {#if progress < 1}
         <span class="progress" title="Still being processed"><i style:width="{Math.round(progress * 100)}%"></i></span>
       {/if}
@@ -121,6 +122,7 @@
   }
   .sm .cover-art h3 { font-size: 15px; }
   .lg .cover-art h3 { font-size: 22px; }
+  .author { font-size: 12.5px; color: #fff3dc; opacity: 0.8; line-height: 1.3; }
   .lang {
     margin-top: auto;
     font-size: 11px;

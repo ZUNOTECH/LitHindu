@@ -9,6 +9,7 @@
   let error = $state('');
   let filter = $state('');
   let language = $state('All');
+  let category = $state('All');
 
   $effect(() => {
     api.books()
@@ -21,7 +22,8 @@
     books.filter(
       (b) =>
         (language === 'All' || b.language.includes(language)) &&
-        b.title.toLowerCase().includes(filter.trim().toLowerCase()),
+        (category === 'All' || (b.category || 'Other') === category) &&
+        (b.title + ' ' + (b.author || '')).toLowerCase().includes(filter.trim().toLowerCase()),
     ),
   );
   // One chip per language actually in the library, most common first.
@@ -29,6 +31,12 @@
     const n = {};
     for (const b of books) for (const l of b.language.split(/ \+ | \/ /)) n[l] = (n[l] || 0) + 1;
     return ['All', ...Object.keys(n).sort((a, b) => n[b] - n[a])];
+  });
+  const CATEGORIES = $derived.by(() => {
+    const n = {};
+    for (const b of books) { const c = b.category || 'Other'; n[c] = (n[c] || 0) + 1; }
+    const keys = Object.keys(n).sort((a, b) => n[b] - n[a]);
+    return keys.length > 1 ? ['All', ...keys] : [];
   });
   const counts = $derived(Object.fromEntries(LANGUAGES.map((l) => [l, l === 'All' ? books.length : books.filter((b) => b.language.includes(l)).length])));
 </script>
@@ -41,7 +49,7 @@
   </header>
 
   <div class="controls glass" use:reveal={80}>
-    <input type="search" placeholder="Filter by title" bind:value={filter} aria-label="Filter by title" />
+    <input type="search" placeholder="Filter by title or author" bind:value={filter} aria-label="Filter by title or author" />
     <div class="chips" role="group" aria-label="Language">
       {#each LANGUAGES as l}
         <button class:on={language === l} aria-pressed={language === l} onclick={() => (language = l)}>
@@ -49,6 +57,13 @@
         </button>
       {/each}
     </div>
+    {#if CATEGORIES.length}
+      <div class="chips cats" role="group" aria-label="Category">
+        {#each CATEGORIES as c}
+          <button class:on={category === c} aria-pressed={category === c} onclick={() => (category = c)}>{c}</button>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   {#if loading}
@@ -78,6 +93,8 @@
   .chips button { gap: 8px; display: inline-flex; align-items: center; padding: 0 16px; }
   .chips button.on { background: linear-gradient(135deg, var(--gold-2), var(--gold)); border-color: transparent; color: var(--on-accent); box-shadow: 0 0 22px rgba(242, 184, 90, 0.35); }
   .n { font-size: 12px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+  .cats { flex-basis: 100%; padding-top: 4px; border-top: 1px solid var(--border); }
+  .cats button { min-height: 40px; font-size: 14.5px; }
   .status, .count { margin: 28px 0 12px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 44px 20px; padding: 24px 0 40px; justify-items: center; }
 </style>

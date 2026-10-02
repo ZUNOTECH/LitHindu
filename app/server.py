@@ -39,7 +39,9 @@ SCRIPT_LANGUAGE = {
 
 
 def language_of(row):
-    """Human-readable language for a book, from its OCR model or text script."""
+    """Human-readable language for a book: the catalog's word, else from its OCR model or text script."""
+    if row["language_name"]:
+        return row["language_name"]
     if row["ocr_script"] and row["ocr_lang"]:
         return " + ".join(LANGUAGE_NAMES.get(code, code) for code in row["ocr_lang"].split("+"))
     if row["legacy_font"]:
@@ -56,6 +58,19 @@ def create_app(db_path):
             raise HTTPException(503, "Library database not built yet. Run ingest/build_library.py.")
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
+        if not ensure_columns(conn):
+            conn.close()
+            # Add the catalog columns once, then reopen read-only.
+            rw = sqlite3.connect(db_path)
+            for col in ("author", "category", "language_name"):
+                try:
+                    rw.execute(f"ALTER TABLE documents ADD COLUMN {col} TEXT")
+                except sqlite3.OperationalError:
+                    pass
+            rw.commit()
+            rw.close()
+            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
         try:
             yield conn
         finally:
@@ -69,6 +84,8 @@ def create_app(db_path):
         return {
             "id": row["id"],
             "title": row["title"],
+            "author": row["author"],
+            "category": row["category"],
             "pages": row["pages"],
             "language": language_of(row),
             "scanned": bool(row["ocr_script"]),
@@ -79,6 +96,11 @@ def create_app(db_path):
         SELECT d.*, (SELECT COUNT(*) FROM pages p WHERE p.doc_id = d.id) AS pages_ready
         FROM documents d WHERE d.error IS NULL AND d.classified = 1
     """
+
+    def ensure_columns(conn):
+        # Catalog columns arrive with ingest/catalog.py; older databases lack them.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(documents)")}
+        return all(c in cols for c in ("author", "category", "language_name"))
 
     @app.get("/api/stats")
     def stats():

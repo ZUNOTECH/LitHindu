@@ -49,6 +49,19 @@ caffeinate -i python ingest/build_library.py "/path/to/your/pdf/folder"
   books whose file name contains TEXT; add `--lang guj` (or `ori`, `mar`,
   `san+eng`, ...) to state the language yourself instead of detecting it.
 
+## The catalog: proper titles, authors, categories
+
+```bash
+python ingest/catalog.py export            # writes catalog/books.csv with first-draft titles
+# edit title, author, language, category (leave `file` alone)
+python ingest/catalog.py apply             # the library and website take the curated names
+python ingest/catalog.py organise          # shows how it would rename and file the PDFs
+python ingest/catalog.py organise --apply  # does it, keeping the library database in step
+```
+
+`organise` files each PDF as `Category/Title - Author.pdf`. Because it
+updates the database as it moves, nothing is re-processed.
+
 ## Comparing OCR engines
 
 ```bash
