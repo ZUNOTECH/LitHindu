@@ -59,8 +59,23 @@ python ingest/catalog.py organise          # shows how it would rename and file 
 python ingest/catalog.py organise --apply  # does it, keeping the library database in step
 ```
 
-`organise` files each PDF as `Category/Title - Author.pdf`. Because it
-updates the database as it moves, nothing is re-processed.
+`organise` files each PDF as `01 Vedas/Title - Author.pdf`, one numbered
+shelf per category. Because it updates the database as it moves, nothing is
+re-processed.
+
+If the PDFs have already been tidied by hand into shelves such as
+`03 Ramayana/Valmiki Ramayana - Sanskrit-Hindi - Translator (1927).pdf`:
+
+```bash
+python ingest/catalog.py adopt "/path/to/organised folder"          # dry run: shows matches
+python ingest/catalog.py adopt "/path/to/organised folder" --apply  # point the library there
+```
+
+Books are matched to files by exact size, so the OCR already done is kept.
+Titles, authors, languages and edition notes are read from the file names
+(`Title (Author) - Language - Translator (Publisher year) - note`), and the
+folder gives the category. From then on build with the organised folder as
+the library path.
 
 ## Comparing OCR engines
 

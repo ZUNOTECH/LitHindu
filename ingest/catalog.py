@@ -10,6 +10,8 @@ keeping the library database in step so nothing is re-processed.
     python ingest/catalog.py apply                  # library takes the CSV's titles etc.
     python ingest/catalog.py organise               # show the moves it would make
     python ingest/catalog.py organise --apply       # move the files and update the library
+    python ingest/catalog.py adopt "/path/to/organised folder"          # match books to an
+    python ingest/catalog.py adopt "/path/to/organised folder" --apply  # already-tidied copy
 
 CSV columns: file, title, author, language, category, pages, notes.
 `file` is the path relative to the library folder and must not be edited by
@@ -29,12 +31,52 @@ from build_library import DEFAULT_DB
 CATALOG = Path(__file__).resolve().parent.parent / "catalog" / "books.csv"
 FIELDS = ["file", "title", "author", "language", "category", "pages", "notes"]
 
+# Shelves, in shelf order; `organise` files books into folders named "01 Vedas" etc.
 CATEGORIES = [
-    "Vedas", "Upanishads", "Itihasa", "Puranas", "Bhagavad Gita", "Dharmashastra and Niti",
-    "Darshana", "Bhakti", "Tantra and Agama", "Yoga", "Stotras and Mantras", "Modern Teachers",
-    "Jyotisha", "Ayurveda and Sciences", "History and Reference", "Reference Articles",
-    "Research Papers", "Other",
+    "Vedas", "Upanishads", "Ramayana", "Mahabharata", "Bhagavad Gita", "Puranas",
+    "Dharmashastra and Niti", "Vedanta and Darshana", "Yoga and Tantra",
+    "Bhakti - Stotra, Chalisa, Path", "Sampradaya Texts", "Jyotisha, Vastu and Vedic Sciences",
+    "Ayurveda and Health", "Introductions to Sanatana Dharma", "Research Papers and Articles",
+    "Reference - Wikipedia Articles", "Other",
 ]
+LANGUAGE_WORDS = {"sanskrit", "hindi", "english", "gujarati", "tamil", "marathi", "nepali", "punjabi",
+                  "odia", "oriya", "bengali", "telugu", "kannada", "malayalam", "awadhi", "roman", "romanized",
+                  # fillers that may appear inside a language part
+                  "with", "and", "tika", "commentary", "translation", "text", "only", "script"}
+
+
+def shelf_folder(category):
+    """'Vedas' -> '01 Vedas'; unknown categories go under 'Other'."""
+    cat = category if category in CATEGORIES else "Other"
+    return f"{CATEGORIES.index(cat) + 1:02d} {cat}"
+
+
+def shelf_category(folder):
+    """'03 Ramayana' -> 'Ramayana'; a folder outside the scheme keeps its own name."""
+    return re.sub(r"^\d+\s+", "", folder).strip() or "Other"
+
+
+def parse_name(stem):
+    """Read 'Title (Author) - Language - Translator (Publisher year) - note' file names.
+
+    Returns (title, author, language, notes). Parts that are not recognised
+    as a language go to notes, so nothing from the name is lost.
+    """
+    parts = [p.strip() for p in re.split(r"\s+-\s+", stem) if p.strip()]
+    title = parts[0] if parts else stem
+    author = ""
+    m = re.match(r"^(.*?)\s*\(([^()]+)\)\s*$", title)
+    if m:
+        title, author = m.group(1).strip(), m.group(2).strip()
+    language = ""
+    notes = []
+    for p in parts[1:]:
+        words = {w.lower() for w in re.split(r"[\s/,+]+", p.replace("-", " ")) if w}
+        if not language and words and words <= LANGUAGE_WORDS and words - {"with", "and", "tika", "commentary", "translation", "text", "only", "script"}:
+            language = p.replace("-", " + ") if " " not in p else p
+        else:
+            notes.append(p)
+    return title, author, language, "; ".join(notes)
 
 # Words whose spelling the auto-cleaner knows; keys are lower-case forms as
 # they appear in file names, values the preferred spelling.
@@ -187,7 +229,7 @@ def cmd_organise(args):
             continue
         title = r["title"].strip() or clean_title(r["file"])
         name = safe_filename(title + (f" - {r['author'].strip()}" if r["author"].strip() else ""))
-        folder = safe_filename(r["category"].strip() or "Other")
+        folder = safe_filename(shelf_folder(r["category"].strip()))
         rel = f"{folder}/{name}{src.suffix.lower()}"
         n = 2
         while rel.lower() in taken or ((root / rel).exists() and (root / rel) != src):
@@ -228,14 +270,75 @@ def cmd_organise(args):
     print(f"Moved {done} files; the library and the catalog now use the new paths.")
 
 
+def cmd_adopt(args):
+    """Match the library's books to files in an already-organised folder by size."""
+    conn = connect(args.db)
+    folder = Path(args.folder).expanduser().resolve()
+    if not folder.is_dir():
+        sys.exit(f"Not a folder: {folder}")
+    files = {}
+    for p in folder.rglob("*"):
+        if p.suffix.lower() == ".pdf" and p.is_file():
+            files.setdefault(p.stat().st_size, []).append(p)
+    docs = conn.execute("SELECT id, path, size, pages FROM documents ORDER BY path").fetchall()
+    matched, unmatched = [], []
+    for d in docs:
+        cands = files.get(d["size"], [])
+        if len(cands) > 1:
+            # Same size twice (duplicates): tell them apart by page count, else take them in order.
+            try:
+                import pymupdf
+                cands = [c for c in cands if pymupdf.open(c).page_count == d["pages"]] or cands
+            except Exception:
+                pass
+        if not cands:
+            unmatched.append(d["path"])
+            continue
+        p = cands.pop(0)
+        files[d["size"]] = cands
+        rel = str(p.relative_to(folder))
+        title, author, language, notes = parse_name(p.stem)
+        matched.append((d["id"], d["path"], rel, title, author, language, shelf_category(p.parent.name) if p.parent != folder else "Other", d["pages"], notes))
+    leftover = [str(p.relative_to(folder)) for ps in files.values() for p in ps]
+    width = max((len(m[1]) for m in matched), default=10)
+    for _, old, rel, *_ in matched:
+        print(f"  {old:<{width}}  =  {rel}")
+    print(f"\n{len(matched)} of {len(docs)} books matched by file size.")
+    for u in unmatched:
+        print(f"  NOT FOUND in the folder: {u}")
+    for l in leftover:
+        print(f"  in the folder but not in the library: {l}")
+    if not args.apply:
+        print("Dry run. Add --apply to point the library at these files and write the catalog.")
+        return
+    for doc_id, old, rel, title, author, language, category, pages, notes in matched:
+        conn.execute("UPDATE documents SET path = ?, title = ?, author = ?, language_name = ?, category = ? WHERE id = ?",
+                     (rel, title, author or None, language or None, category, doc_id))
+    conn.execute("INSERT OR REPLACE INTO meta VALUES ('library_root', ?)", (str(folder),))
+    conn.commit()
+    args.catalog.parent.mkdir(parents=True, exist_ok=True)
+    with args.catalog.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w.writeheader()
+        for _, old, rel, title, author, language, category, pages, notes in matched:
+            w.writerow({"file": rel, "title": title, "author": author, "language": language,
+                        "category": category, "pages": pages, "notes": notes})
+    print(f"The library now reads from {folder}. Catalog written to {args.catalog}.")
+    if unmatched:
+        print(f"{len(unmatched)} books were not found there; they keep their old paths and will show as missing until their files are present.")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("command", choices=["export", "apply", "organise"])
+    ap.add_argument("command", choices=["export", "apply", "organise", "adopt"])
+    ap.add_argument("folder", nargs="?", help="adopt: the organised folder to match against")
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     ap.add_argument("--catalog", type=Path, default=CATALOG)
     ap.add_argument("--apply", action="store_true", help="organise: really move the files")
     args = ap.parse_args()
-    {"export": cmd_export, "apply": cmd_apply, "organise": cmd_organise}[args.command](args)
+    if args.command == "adopt" and not args.folder:
+        sys.exit("adopt needs the organised folder:  python ingest/catalog.py adopt \"/path/to/folder\"")
+    {"export": cmd_export, "apply": cmd_apply, "organise": cmd_organise, "adopt": cmd_adopt}[args.command](args)
 
 
 if __name__ == "__main__":
